@@ -1,0 +1,22 @@
+name: oneclick-deployment
+
+volumes:
+  postgres:
+
+networks:
+  oneclick-deployment:
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-oneclick-deployment}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres:/var/lib/postgresql
+    networks:
+      - oneclick-deployment
