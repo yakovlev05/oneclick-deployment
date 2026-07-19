@@ -90,6 +90,18 @@
             <plugin>
                 <groupId>org.graalvm.buildtools</groupId>
                 <artifactId>native-maven-plugin</artifactId>
+                <configuration>
+                    <buildArgs combine.children="append">
+                        <!--Архитектура-->
+                        <buildArg>-march=x86-64-v2</buildArg>
+
+                        <!--Docker java использует сериализации этих классов-->
+                        <buildArg>-H:Preserve=package=com.github.dockerjava.core.command.*</buildArg>
+                        <buildArg>-H:Preserve=package=com.github.dockerjava.api.command.*</buildArg>
+
+                        <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
+                    </buildArgs>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

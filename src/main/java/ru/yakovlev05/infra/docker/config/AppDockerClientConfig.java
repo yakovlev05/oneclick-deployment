@@ -1,4 +1,4 @@
-package ru.yakovlev05.infra.config;
+package ru.yakovlev05.infra.docker.config;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
