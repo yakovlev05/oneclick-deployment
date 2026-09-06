@@ -9,21 +9,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import ru.yakovlev05.infra.docker.dto.ContainerInfoDto;
-import ru.yakovlev05.infra.docker.dto.CreateContainerRequestDto;
-import ru.yakovlev05.infra.docker.dto.CreateNetworkRequestDto;
-import ru.yakovlev05.infra.docker.dto.CreateVolumeRequestDto;
-import ru.yakovlev05.infra.docker.dto.NetworkInfoDto;
-import ru.yakovlev05.infra.docker.dto.VolumeInfoDto;
+import org.springframework.web.bind.annotation.*;
+import ru.yakovlev05.infra.docker.dto.*;
 import ru.yakovlev05.infra.docker.service.DockerResourceService;
 import ru.yakovlev05.infra.error.model.Errors;
 
 @Tag(name = "docker-resources")
-@RequestMapping("/api/docker-resources")
+@RequestMapping("/api/deployment/{deploymentId}/docker-resources")
 @RestController
 @RequiredArgsConstructor
 public class DockerResourcesController {
@@ -38,8 +30,22 @@ public class DockerResourcesController {
                     content = @Content(schema = @Schema(implementation = Errors.class)))
     })
     @PostMapping("/container")
-    public ContainerInfoDto createContainer(@RequestBody @Valid CreateContainerRequestDto requestDto) {
-        return dockerResourceService.createContainer(requestDto);
+    public ContainerInfoDto createContainer(
+            @PathVariable Long deploymentId,
+            @RequestBody @Valid CreateContainerRequestDto requestDto
+    ) {
+        return dockerResourceService.createContainer(requestDto, deploymentId);
+    }
+
+    @Operation(summary = "Удалить Docker-контейнер")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Docker контейнер успешно остановлен и удален"),
+            @ApiResponse(responseCode = "400", description = "Ошибка удаления. Валидация или ошибка от Docker",
+                    content = @Content(schema = @Schema(implementation = Errors.class)))
+    })
+    @DeleteMapping("/container/{containerId}")
+    public void deleteContainer(@PathVariable Long deploymentId, @PathVariable String containerId) {
+        dockerResourceService.deleteContainer(containerId, deploymentId);
     }
 
     @Operation(summary = "Создать Docker-сеть")
@@ -50,8 +56,22 @@ public class DockerResourcesController {
                     content = @Content(schema = @Schema(implementation = Errors.class)))
     })
     @PostMapping("/network")
-    public NetworkInfoDto createNetwork(@RequestBody @Valid CreateNetworkRequestDto requestDto) {
-        return dockerResourceService.createNetwork(requestDto);
+    public NetworkInfoDto createNetwork(
+            @PathVariable Long deploymentId,
+            @RequestBody @Valid CreateNetworkRequestDto requestDto
+    ) {
+        return dockerResourceService.createNetwork(requestDto, deploymentId);
+    }
+
+    @Operation(summary = "Удалить Docker-сеть")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Docker сеть успешно удалена"),
+            @ApiResponse(responseCode = "400", description = "Ошибка удаления. Валидация или ошибка от Docker",
+                    content = @Content(schema = @Schema(implementation = Errors.class)))
+    })
+    @DeleteMapping("/network/{networkId}")
+    public void deleteNetwork(@PathVariable Long deploymentId, @PathVariable String networkId) {
+        dockerResourceService.deleteNetwork(networkId, deploymentId);
     }
 
     @Operation(summary = "Создать Docker-том")
@@ -62,8 +82,22 @@ public class DockerResourcesController {
                     content = @Content(schema = @Schema(implementation = Errors.class)))
     })
     @PostMapping("/volume")
-    public VolumeInfoDto createVolume(@RequestBody @Valid CreateVolumeRequestDto requestDto) {
-        return dockerResourceService.createVolume(requestDto);
+    public VolumeInfoDto createVolume(
+            @PathVariable Long deploymentId,
+            @RequestBody @Valid CreateVolumeRequestDto requestDto
+    ) {
+        return dockerResourceService.createVolume(requestDto, deploymentId);
+    }
+
+    @Operation(summary = "Удалить Docker-том")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Docker том успешно удален"),
+            @ApiResponse(responseCode = "400", description = "Ошибка удаления. Валидация или ошибка от Docker",
+                    content = @Content(schema = @Schema(implementation = Errors.class)))
+    })
+    @DeleteMapping("/volume/{volumeName}")
+    public void deleteVolume(@PathVariable Long deploymentId, @PathVariable String volumeName) {
+        dockerResourceService.deleteVolume(volumeName, deploymentId);
     }
 
 }

@@ -24,10 +24,32 @@ public class DeploymentService {
         return deploymentMapper.toDeploymentInfoDto(deployment);
     }
 
-    public DeploymentInfoDto getById(Long id) {
-        Deployment deployment = deploymentRepository.findById(id)
+    public DeploymentInfoDto getInfoById(Long id) {
+        Deployment deployment = findByIdOrThrow(id);
+        return deploymentMapper.toDeploymentInfoDto(deployment);
+    }
+
+    public Deployment findByIdOrThrow(Long id) {
+        return deploymentRepository.findById(id)
                 .orElseThrow(() -> new Errors(NOT_FOUND.value(), "notFound", "deployment not found")
                         .toEx());
-        return deploymentMapper.toDeploymentInfoDto(deployment);
+    }
+
+    public Deployment findByIdAndCheckAffiliationOrThrow(Long id, String dockerId) {
+        Deployment deployment = findByIdOrThrow(id);
+
+        boolean belongsToDeployment = deployment.getDockerResources().stream()
+                .anyMatch(resource -> resource.getDockerId().equals(dockerId));
+
+        if (!belongsToDeployment) {
+            throw new Errors(NOT_FOUND.value(), "notFound", "docker resource not found in deployment")
+                    .toEx();
+        }
+
+        return deployment;
+    }
+
+    public Deployment save(Deployment deployment) {
+        return deploymentRepository.save(deployment);
     }
 }

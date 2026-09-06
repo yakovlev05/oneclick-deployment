@@ -13,7 +13,7 @@ import java.util.List;
 @Accessors(chain = true)
 @Getter
 @Setter
-public class ContainerInfoDto {
+public class ContainerInfoDto implements DockerResourceInfo {
 
     @Pattern(regexp = "^.+:.+$")
     @Schema(description = "Образ в Docker", example = "postgres:18")
@@ -21,6 +21,9 @@ public class ContainerInfoDto {
 
     @Schema(description = "Название контейнера", example = "app-backend")
     private String containerName;
+
+    @Schema(description = "ID контейнера", example = "b3a63e5ccce3")
+    private String containerId;
 
     @ArraySchema(
             schema = @Schema(example = "POSTGRES_USER=alexey"),

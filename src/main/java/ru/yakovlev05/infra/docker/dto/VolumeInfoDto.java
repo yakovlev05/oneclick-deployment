@@ -10,7 +10,7 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @Getter
 @Setter
-public class VolumeInfoDto {
+public class VolumeInfoDto implements DockerResourceInfo{
 
     @NotNull
     @Schema(description = "Название тома")

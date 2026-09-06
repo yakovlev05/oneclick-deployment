@@ -4,24 +4,19 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.CreateNetworkResponse;
 import com.github.dockerjava.api.command.CreateVolumeResponse;
-import com.github.dockerjava.api.command.InspectContainerResponse;
-import com.github.dockerjava.api.command.InspectVolumeResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.HostConfig;
-import com.github.dockerjava.api.model.Network;
 import com.github.dockerjava.api.model.PortBinding;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ru.yakovlev05.infra.docker.dto.ContainerInfoDto;
-import ru.yakovlev05.infra.docker.dto.CreateContainerRequestDto;
-import ru.yakovlev05.infra.docker.dto.CreateNetworkRequestDto;
-import ru.yakovlev05.infra.docker.dto.CreateVolumeRequestDto;
-import ru.yakovlev05.infra.docker.dto.NetworkInfoDto;
-import ru.yakovlev05.infra.docker.dto.VolumeInfoDto;
+import ru.yakovlev05.infra.consts.GlobalConst;
+import ru.yakovlev05.infra.deployment.entity.Deployment;
+import ru.yakovlev05.infra.deployment.service.DeploymentService;
+import ru.yakovlev05.infra.docker.dto.*;
+import ru.yakovlev05.infra.docker.entity.DockerResource;
+import ru.yakovlev05.infra.docker.entity.DockerResourceType;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 import static ru.yakovlev05.infra.util.ThreadingUtil.callUninterruptibly;
@@ -31,8 +26,12 @@ import static ru.yakovlev05.infra.util.ThreadingUtil.callUninterruptibly;
 public class DockerResourceService {
 
     private final DockerClient dockerClient;
+    private final DeploymentService deploymentService;
+    private final DockerInspectService dockerInspectService;
 
-    public ContainerInfoDto createContainer(CreateContainerRequestDto requestDto) {
+    public ContainerInfoDto createContainer(CreateContainerRequestDto requestDto, Long deploymentId) {
+        Deployment deployment = deploymentService.findByIdOrThrow(deploymentId);
+
         callUninterruptibly(() ->
                 dockerClient
                         .pullImageCmd(requestDto.getImage())
@@ -45,56 +44,89 @@ public class DockerResourceService {
 
         CreateContainerResponse createContainerResponse = dockerClient
                 .createContainerCmd(requestDto.getImage())
-                .withName(requestDto.getContainerName())
+                .withName(nameWithPrefix(deployment.getId(), requestDto.getContainerName()))
                 .withEnv(requestDto.getEnvironment())
                 .withHostConfig(hostConfig)
                 .exec();
 
+        DockerResource dockerResource = new DockerResource()
+                .setDeploymentId(deployment.getId())
+                .setType(DockerResourceType.CONTAINER)
+                .setDockerId(createContainerResponse.getId())
+                .setCreatedAt(LocalDateTime.now());
+        deployment.addDockerResource(dockerResource);
+        deploymentService.save(deployment);
+
         dockerClient.startContainerCmd(createContainerResponse.getId()).exec();
-        return inspectContainer(createContainerResponse.getId());
+        return dockerInspectService.inspectContainer(createContainerResponse.getId());
     }
 
-    public ContainerInfoDto inspectContainer(String containerId) {
-        InspectContainerResponse inspectContainerResponse = dockerClient.inspectContainerCmd(containerId).exec();
+    public void deleteContainer(String containerId, Long deploymentId) {
+        Deployment deployment = deploymentService.findByIdAndCheckAffiliationOrThrow(deploymentId, containerId);
 
-        return new ContainerInfoDto()
-                .setImage(inspectContainerResponse.getConfig().getImage())
-                .setContainerName(inspectContainerResponse.getName())
-                .setEnvironment(Optional.ofNullable(inspectContainerResponse.getConfig().getEnv())
-                        .map(Arrays::asList)
-                        .orElse(List.of()))
-                .setPorts(inspectContainerResponse.getNetworkSettings().getPorts().getBindings().entrySet().stream()
-                        .map(e -> e.getValue()[0].getHostPortSpec() + ":" + e.getKey().getPort())
-                        .toList());
+        dockerClient.removeContainerCmd(containerId)
+                .withForce(true)
+                .exec();
+
+        deployment.removeDockerResourceByDockerId(containerId);
+        deploymentService.save(deployment);
     }
 
-    public NetworkInfoDto createNetwork(CreateNetworkRequestDto requestDto) {
+    public NetworkInfoDto createNetwork(CreateNetworkRequestDto requestDto, Long deploymentId) {
+        Deployment deployment = deploymentService.findByIdOrThrow(deploymentId);
+
         CreateNetworkResponse createNetworkResponse = dockerClient.createNetworkCmd()
-                .withName(requestDto.getName())
-                .exec();
-        return inspectNetwork(createNetworkResponse.getId());
-    }
-
-    public NetworkInfoDto inspectNetwork(String networkId) {
-        Network network = dockerClient.inspectNetworkCmd()
-                .withNetworkId(networkId)
+                .withName(nameWithPrefix(deployment.getId(), requestDto.getName()))
                 .exec();
 
-        return new NetworkInfoDto()
-                .setName(network.getName());
+        DockerResource dockerResource = new DockerResource()
+                .setDeploymentId(deployment.getId())
+                .setType(DockerResourceType.NETWORK)
+                .setDockerId(createNetworkResponse.getId())
+                .setCreatedAt(LocalDateTime.now());
+        deployment.addDockerResource(dockerResource);
+        deploymentService.save(deployment);
+
+        return dockerInspectService.inspectNetwork(createNetworkResponse.getId());
     }
 
-    public VolumeInfoDto createVolume(CreateVolumeRequestDto requestDto) {
+    public void deleteNetwork(String networkId, Long deploymentId) {
+        Deployment deployment = deploymentService.findByIdAndCheckAffiliationOrThrow(deploymentId, networkId);
+
+        dockerClient.removeNetworkCmd(networkId).exec();
+
+        deployment.removeDockerResourceByDockerId(networkId);
+        deploymentService.save(deployment);
+    }
+
+    public VolumeInfoDto createVolume(CreateVolumeRequestDto requestDto, Long deploymentId) {
+        Deployment deployment = deploymentService.findByIdOrThrow(deploymentId);
+
         CreateVolumeResponse createVolumeResponse = dockerClient.createVolumeCmd()
-                .withName(requestDto.getName())
+                .withName(nameWithPrefix(deployment.getId(), requestDto.getName()))
                 .exec();
-        return inspectVolume(createVolumeResponse.getName());
+
+        DockerResource dockerResource = new DockerResource()
+                .setDeploymentId(deployment.getId())
+                .setType(DockerResourceType.VOLUME)
+                .setDockerId(createVolumeResponse.getName())
+                .setCreatedAt(LocalDateTime.now());
+        deployment.addDockerResource(dockerResource);
+        deploymentService.save(deployment);
+
+        return dockerInspectService.inspectVolume(createVolumeResponse.getName());
     }
 
-    public VolumeInfoDto inspectVolume(String volumeName) {
-        InspectVolumeResponse volume = dockerClient.inspectVolumeCmd(volumeName).exec();
+    public void deleteVolume(String volumeName, Long deploymentId) {
+        Deployment deployment = deploymentService.findByIdAndCheckAffiliationOrThrow(deploymentId, volumeName);
 
-        return new VolumeInfoDto()
-                .setName(volume.getName());
+        dockerClient.removeVolumeCmd(volumeName).exec();
+
+        deployment.removeDockerResourceByDockerId(volumeName);
+        deploymentService.save(deployment);
+    }
+
+    private String nameWithPrefix(Long deploymentId, String originalName) {
+        return GlobalConst.DOCKER_NAMESPACE + "-" + deploymentId + "-" + originalName;
     }
 }

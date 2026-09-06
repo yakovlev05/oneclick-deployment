@@ -10,10 +10,13 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @Getter
 @Setter
-public class NetworkInfoDto {
+public class NetworkInfoDto implements DockerResourceInfo {
 
     @NotNull
     @Schema(description = "Название сети")
     private String name;
+
+    @Schema(description = "ID сети", example = "f2de39df4171")
+    private String networkId;
 
 }

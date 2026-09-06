@@ -1,14 +1,19 @@
 package ru.yakovlev05.infra.deployment.mapper;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import ru.yakovlev05.infra.deployment.dto.CreateDeploymentRequestDto;
 import ru.yakovlev05.infra.deployment.dto.DeploymentInfoDto;
 import ru.yakovlev05.infra.deployment.entity.Deployment;
+import ru.yakovlev05.infra.docker.mapper.DockerResourceMapper;
 
 import java.time.LocalDateTime;
 
+@RequiredArgsConstructor
 @Component
 public class DeploymentMapper {
+
+    private final DockerResourceMapper dockerResourceMapper;
 
     public Deployment toEntity(CreateDeploymentRequestDto dto) {
         return new Deployment()
@@ -26,7 +31,12 @@ public class DeploymentMapper {
                 .setDescription(entity.getDescription())
                 .setTtl(entity.getTtl())
                 .setCreatedAt(entity.getCreatedAt())
-                .setUpdatedAt(entity.getUpdatedAt());
+                .setUpdatedAt(entity.getUpdatedAt())
+                .setDockerResources(entity.getDockerResources()
+                        .stream()
+                        .map(dockerResourceMapper::toDockerResourceInfoWrapper)
+                        .toList()
+                );
     }
 
 }

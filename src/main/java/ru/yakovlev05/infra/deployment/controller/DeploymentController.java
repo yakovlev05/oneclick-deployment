@@ -37,23 +37,13 @@ public class DeploymentController {
 
     @Operation(summary = "Получить информацию о сессии деплоя по ID")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Успешно создано"),
+            @ApiResponse(responseCode = "200", description = "Информация получена"),
             @ApiResponse(responseCode = "404", description = "Сессия деплоя не найдена",
                     content = @Content(schema = @Schema(implementation = Errors.class)))
     })
     @GetMapping("/{id}")
     public DeploymentInfoDto getById(@PathVariable Long id) {
-        return deploymentService.getById(id);
+        return deploymentService.getInfoById(id);
     }
 
-//    @PostMapping("/create-container")
-//    public void createContainer(@RequestBody CreateContainerDto createContainerDto) {
-//        dockerClient.createContainerCmd(createContainerDto.image())
-//                .withName("TO_DELETE_CONTAINER" + ThreadLocalRandom.current().nextInt(10000))
-//                .withEnv()
-//                .withPortSpecs()
-//                .exec();
-//
-//        dockerClient.listVolumesCmd().exec().getVolumes()
-//    }
 }
