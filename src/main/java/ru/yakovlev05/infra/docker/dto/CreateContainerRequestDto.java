@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
@@ -37,4 +38,13 @@ public class CreateContainerRequestDto {
     )
     @JsonSetter(nulls = Nulls.AS_EMPTY)
     private List<@Pattern(regexp = "^\\d+:\\d+$") String> ports;
+
+
+    @Schema(description = "Название сети, в которой будет контейнер. Для создания сети есть отдельный эндпоинт",
+            example = "postgres-cluster")
+    private String networkName;
+
+    @Schema(description = "Биндинг томов в Docker контейнере")
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
+    private List<@Valid VolumeBindInfoDto> volumeBinding;
 }

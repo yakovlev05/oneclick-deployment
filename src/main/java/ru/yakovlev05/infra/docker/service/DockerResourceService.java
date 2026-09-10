@@ -5,8 +5,11 @@ import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.CreateNetworkResponse;
 import com.github.dockerjava.api.command.CreateVolumeResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
+import com.github.dockerjava.api.exception.DockerException;
+import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Volume;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.yakovlev05.infra.consts.GlobalConst;
@@ -40,7 +43,13 @@ public class DockerResourceService {
         );
 
         HostConfig hostConfig = HostConfig.newHostConfig()
-                .withPortBindings(requestDto.getPorts().stream().map(PortBinding::parse).toList());
+                .withBinds(
+                        requestDto.getVolumeBinding().stream()
+                                .map(b -> new Bind(b.getHost(), new Volume(b.getTarget())))
+                                .toList()
+                )
+                .withPortBindings(requestDto.getPorts().stream().map(PortBinding::parse).toList())
+                .withNetworkMode(requestDto.getNetworkName());
 
         CreateContainerResponse createContainerResponse = dockerClient
                 .createContainerCmd(requestDto.getImage())
@@ -57,7 +66,13 @@ public class DockerResourceService {
         deployment.addDockerResource(dockerResource);
         deploymentService.save(deployment);
 
-        dockerClient.startContainerCmd(createContainerResponse.getId()).exec();
+        try {
+            dockerClient.startContainerCmd(createContainerResponse.getId()).exec();
+        } catch (DockerException e) {
+            dockerClient.removeContainerCmd(createContainerResponse.getId()).exec();
+            throw e;
+        }
+
         return dockerInspectService.inspectContainer(createContainerResponse.getId());
     }
 

@@ -24,6 +24,11 @@ public class Errors {
         this.code = 400;
     }
 
+    public Errors(int code, List<Error> errors) {
+        this.code = code;
+        this.errors.addAll(errors);
+    }
+
     public RuntimeException toEx() {
         return new ErrorsWrapperException(this);
     }
