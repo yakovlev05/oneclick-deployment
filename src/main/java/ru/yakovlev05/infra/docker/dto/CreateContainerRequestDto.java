@@ -34,7 +34,7 @@ public class CreateContainerRequestDto {
 
     @ArraySchema(
             schema = @Schema(example = "8080:8080"),
-            arraySchema = @Schema(description = "Список открытых портов")
+            arraySchema = @Schema(description = "Список открытых портов, HOST:CONTAINER")
     )
     @JsonSetter(nulls = Nulls.AS_EMPTY)
     private List<@Pattern(regexp = "^\\d+:\\d+$") String> ports;
@@ -47,4 +47,7 @@ public class CreateContainerRequestDto {
     @Schema(description = "Биндинг томов в Docker контейнере")
     @JsonSetter(nulls = Nulls.AS_EMPTY)
     private List<@Valid VolumeBindInfoDto> volumeBinding;
+
+    @Schema(description = "Маппинг доменов к контейнеру для подключения домен:443 -> порт контейнера")
+    private @Valid DomainBindingInfoDto domainNamespace;
 }

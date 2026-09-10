@@ -20,8 +20,13 @@ import ru.yakovlev05.infra.docker.entity.DockerResource;
 import ru.yakovlev05.infra.docker.entity.DockerResourceType;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static ru.yakovlev05.infra.consts.GlobalConst.TRAEFIK_NETWORK;
 import static ru.yakovlev05.infra.util.ThreadingUtil.callUninterruptibly;
 
 @RequiredArgsConstructor
@@ -31,9 +36,17 @@ public class DockerResourceService {
     private final DockerClient dockerClient;
     private final DeploymentService deploymentService;
     private final DockerInspectService dockerInspectService;
+    private final TraefikLabelsService traefikLabelsService;
 
     public ContainerInfoDto createContainer(CreateContainerRequestDto requestDto, Long deploymentId) {
         Deployment deployment = deploymentService.findByIdOrThrow(deploymentId);
+        List<String> networks = new ArrayList<>(List.of(requestDto.getNetworkName()));
+        Map<String, String> labels = new HashMap<>();
+
+        if (requestDto.getDomainNamespace() != null) {
+            networks.add(TRAEFIK_NETWORK);
+            labels.putAll(traefikLabelsService.getLabels(deploymentId, requestDto.getDomainNamespace()));
+        }
 
         callUninterruptibly(() ->
                 dockerClient
@@ -48,14 +61,14 @@ public class DockerResourceService {
                                 .map(b -> new Bind(b.getHost(), new Volume(b.getTarget())))
                                 .toList()
                 )
-                .withPortBindings(requestDto.getPorts().stream().map(PortBinding::parse).toList())
-                .withNetworkMode(requestDto.getNetworkName());
+                .withPortBindings(requestDto.getPorts().stream().map(PortBinding::parse).toList());
 
         CreateContainerResponse createContainerResponse = dockerClient
                 .createContainerCmd(requestDto.getImage())
                 .withName(nameWithPrefix(deployment.getId(), requestDto.getContainerName()))
                 .withEnv(requestDto.getEnvironment())
                 .withHostConfig(hostConfig)
+                .withLabels(labels)
                 .exec();
 
         DockerResource dockerResource = new DockerResource()
@@ -67,6 +80,12 @@ public class DockerResourceService {
         deploymentService.save(deployment);
 
         try {
+            networks.forEach(network -> {
+                dockerClient.connectToNetworkCmd()
+                        .withContainerId(createContainerResponse.getId())
+                        .withNetworkId(network)
+                        .exec();
+            });
             dockerClient.startContainerCmd(createContainerResponse.getId()).exec();
         } catch (DockerException e) {
             dockerClient.removeContainerCmd(createContainerResponse.getId()).exec();
