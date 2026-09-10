@@ -3,6 +3,7 @@ package ru.yakovlev05.infra.docker.service;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.InspectVolumeResponse;
+import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.Network;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class DockerInspectService {
 
     public ContainerInfoDto inspectContainer(String containerId) {
         InspectContainerResponse inspectContainerResponse = dockerClient.inspectContainerCmd(containerId).exec();
+        HostConfig hostConfig = inspectContainerResponse.getHostConfig();
 
         return new ContainerInfoDto()
                 .setImage(inspectContainerResponse.getConfig().getImage())
@@ -30,9 +32,11 @@ public class DockerInspectService {
                 .setEnvironment(Optional.ofNullable(inspectContainerResponse.getConfig().getEnv())
                         .map(Arrays::asList)
                         .orElse(List.of()))
-                .setPorts(inspectContainerResponse.getNetworkSettings().getPorts().getBindings().entrySet().stream()
-                        .map(e -> e.getValue()[0].getHostPortSpec() + ":" + e.getKey().getPort())
-                        .toList());
+                .setPorts(
+                        hostConfig.getPortBindings().getBindings().entrySet().stream()
+                                .map(e -> e.getValue()[0].getHostPortSpec() + ":" + e.getKey().getPort())
+                                .toList()
+                );
     }
 
     public NetworkInfoDto inspectNetwork(String networkId) {

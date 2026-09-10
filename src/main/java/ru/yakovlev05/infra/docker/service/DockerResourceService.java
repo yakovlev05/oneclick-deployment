@@ -71,14 +71,6 @@ public class DockerResourceService {
                 .withLabels(labels)
                 .exec();
 
-        DockerResource dockerResource = new DockerResource()
-                .setDeploymentId(deployment.getId())
-                .setType(DockerResourceType.CONTAINER)
-                .setDockerId(createContainerResponse.getId())
-                .setCreatedAt(LocalDateTime.now());
-        deployment.addDockerResource(dockerResource);
-        deploymentService.save(deployment);
-
         try {
             networks.forEach(network -> {
                 dockerClient.connectToNetworkCmd()
@@ -91,6 +83,14 @@ public class DockerResourceService {
             dockerClient.removeContainerCmd(createContainerResponse.getId()).exec();
             throw e;
         }
+
+        DockerResource dockerResource = new DockerResource()
+                .setDeploymentId(deployment.getId())
+                .setType(DockerResourceType.CONTAINER)
+                .setDockerId(createContainerResponse.getId())
+                .setCreatedAt(LocalDateTime.now());
+        deployment.addDockerResource(dockerResource);
+        deploymentService.save(deployment);
 
         return dockerInspectService.inspectContainer(createContainerResponse.getId());
     }

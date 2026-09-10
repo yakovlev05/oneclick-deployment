@@ -40,11 +40,12 @@ public class CreateContainerRequestDto {
     private List<@Pattern(regexp = "^\\d+:\\d+$") String> ports;
 
 
-    @Schema(description = "Название сети, в которой будет контейнер. Для создания сети есть отдельный эндпоинт",
+    @Schema(description = "Название сети, в которой будет контейнер. Для создания сети есть отдельный эндпоинт. " +
+                          "Указывать с префиксом",
             example = "postgres-cluster")
     private String networkName;
 
-    @Schema(description = "Биндинг томов в Docker контейнере")
+    @Schema(description = "Биндинг томов в Docker контейнере. Указывать название с префиксом")
     @JsonSetter(nulls = Nulls.AS_EMPTY)
     private List<@Valid VolumeBindInfoDto> volumeBinding;
 
